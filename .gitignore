@@ -1,0 +1,37 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Datasets & CSV files (training splits, vocabulary mappings, and metadata)
+*.csv
+*.tsv
+*.parquet
+
+# Extracted landmarks & large binary artifacts
+extracted_landmarks/
+*.npy
+*.npz
+
+# Model weights & training checkpoints
+saved_models/*.pth
+saved_models/*.onnx
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SignVoice — Live ASL Interpreter</title>
+  <meta name="description" content="Real-time ASL to English interpreter with live gloss, translation, and speech.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">手</span>
+        <div>
+          <h1>SignVoice</h1>
+          <p>Live ASL → English interpreter</p>
+        </div>
+      </div>
+
+      <nav class="nav-tabs" role="tablist">
+        <button id="tabBtnDashboard" class="nav-tab active" type="button">Live Interpreter</button>
+        <button id="tabBtnTesting" class="nav-tab" type="button">Testing Lab</button>
+      </nav>
+
+      <div class="topbar-meta">
+        <span class="pill" id="backendPill">Recognizer: …</span>
+        <div class="connection-status" id="wsStatus">
+          <span class="status-dot"></span>
+          <span class="status-label">Connecting…</span>
+        </div>
+        <button id="btnResetSession" class="btn btn-ghost" type="button">Reset</button>
+      </div>
+    </header>
+
+    <main id="viewDashboard" class="live-layout">
+      <section class="stage-card">
+        <div class="stage-toolbar">
+          <h2>Camera</h2>
+          <div class="toolbar-right">
+            <div class="sensitivity-picker">
+              <label for="sensitivitySelect">Hold:</label>
+              <select id="sensitivitySelect">
+                <option value="steady" selected>Steady (High Precision)</option>
+                <option value="balanced">Balanced</option>
+                <option value="fast">Fast</option>
+              </select>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggleWebcam" checked>
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label" id="camSwitchLabel">Camera on</span>
+          </div>
+        </div>
+
+        <div class="video-container" id="videoContainer">
+          <video id="webcamVideo" autoplay playsinline muted></video>
+          <canvas id="landmarkCanvas"></canvas>
+          <div class="video-placeholder" id="videoPlaceholder">
+            <p>Camera is off</p>
+            <span>Turn it on to start interpreting</span>
+          </div>
+          <div class="hud-top">
+            <span id="fpsDisplay">— FPS</span>
+            <span id="bufferDisplay">Idle</span>
+            <span id="handsDisplay">No hands</span>
+          </div>
+          <div class="hud-gloss" id="hudGloss">
+            <div class="hud-header">
+              <span class="hud-kicker">Now seeing</span>
+              <span class="hold-label" id="holdLabel">Hold to commit</span>
+            </div>
+            <strong id="liveHypothesis">—</strong>
+            <div class="meters-row">
+              <div class="meter-group">
+                <span class="meter-label">Confidence</span>
+                <div class="conf-track"><i id="confBar"></i></div>
+              </div>
+              <div class="meter-group">
+                <span class="meter-label">Hold Lock</span>
+                <div class="hold-track"><i id="holdBar"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">Hold a sign still until it locks into the phrase. Drop your hands (or tap Translate) to speak the sentence.</p>
+      </section>
+
+      <aside class="interpret-col">
+        <section class="panel phrase-panel">
+          <div class="panel-header">
+            <h2>Phrase</h2>
+            <button id="btnCommitPhrase" class="btn btn-primary" type="button">Translate now</button>
+          </div>
+          <div class="phrase-chips" id="phraseChips">
+            <span class="muted">Signs you hold will appear here</span>
+          </div>
+        </section>
+
+        <section class="panel speech-panel">
+          <div class="panel-header">
+            <h2>English</h2>
+            <label class="tts-toggle">
+              <input type="checkbox" id="toggleTTS" checked>
+              Speak
+            </label>
+          </div>
+          <p class="english-out" id="liveSubtitle">Sign toward the camera to begin.</p>
+          <div class="meta-row">
+            <span id="providerTag">Provider: standby</span>
+            <span id="latencyTag">0 ms</span>
+            <span id="totalLatencyBadge">Pipeline 0 ms</span>
+          </div>
+        </section>
+
+        <section class="panel pipeline-panel">
+          <div class="panel-header">
+            <h2>Agents</h2>
+          </div>
+          <ol class="pipe">
+            <li id="cardVision"><span class="agent-dot" id="dotVision"></span><b>Vision</b><em id="latVision">—</em><span id="valVision">Ready</span></li>
+            <li id="cardSign"><span class="agent-dot" id="dotSign"></span><b>Sign</b><em id="latSign">—</em><span id="valSign">Waiting</span></li>
+            <li id="cardContext"><span class="agent-dot" id="dotContext"></span><b>Context</b><em id="latContext">—</em><span id="valContext">Idle</span></li>
+            <li id="cardLanguage"><span class="agent-dot" id="dotLanguage"></span><b>Language</b><em id="latLanguage">—</em><span id="valLanguage">Idle</span></li>
+            <li id="cardSpeech"><span class="agent-dot" id="dotSpeech"></span><b>Speech</b><em id="latSpeech">—</em><span id="valSpeech">Idle</span></li>
+            <li id="cardMemory"><span class="agent-dot" id="dotMemory"></span><b>Memory</b><em id="latMemory">—</em><span id="valMemory">0 turns</span></li>
+          </ol>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>Signs that work well</h2>
+          <ul class="guide">
+            <li><b>HELLO</b> open hand, wave</li>
+            <li><b>ME</b> index finger toward yourself</li>
+            <li><b>YOU</b> index finger toward the camera</li>
+            <li><b>YES</b> fist, nod it</li>
+            <li><b>NO</b> index finger, shake side to side</li>
+            <li><b>GOOD</b> thumbs up</li>
+            <li><b>PHONE</b> Y-hand (thumb + pinky)</li>
+            <li><b>WATER</b> W-hand (3 fingers)</li>
+            <li><b>THANK YOU</b> flat hand, tips up</li>
+            <li><b>WANT</b> claw hands</li>
+          </ul>
+        </section>
+      </aside>
+
+      <section class="panel transcript-span">
+        <div class="panel-header">
+          <h2>Transcript</h2>
+          <button id="btnExportJson" class="btn btn-ghost" type="button">Export JSON</button>
+        </div>
+        <div class="transcript-list" id="transcriptList">
+          <div class="empty-state">Nothing recorded yet.</div>
+        </div>
+      </section>
+    </main>
+
+    <main id="viewTesting" class="testing-grid" style="display: none;">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Sign sequence sandbox</h2>
+          <span class="sandbox-hint">Skip the camera and feed glosses directly</span>
+        </div>
+        <div class="quick-presets-section">
+          <h4>Presets</h4>
+          <div class="quick-presets">
+            <button class="preset-chip" data-signs="ME,STORE,TOMORROW,GO" type="button">I will go to the store tomorrow.</button>
+            <button class="preset-chip" data-signs="ME,WANT,EAT,NOW" type="button">I want food now.</button>
+            <button class="preset-chip" data-signs="BATHROOM,WHERE" type="button">Where is the bathroom?</button>
+            <button class="preset-chip" data-signs="THANKYOU,ME,NEED,HELP" type="button">Thank you, I need help.</button>
+            <button class="preset-chip" data-signs="ME,FINISH,WORK,ME,WANT,GO,HOME" type="button">I finished work, I want to go home.</button>
+            <button class="preset-chip" data-signs="WHAT,YOU,WANT" type="button">What do you want?</button>
+          </div>
+        </div>
+        <div class="custom-builder">
+          <div class="builder-header">
+            <h4>Active sequence</h4>
+            <button id="btnClearTokens" class="btn-icon" type="button" title="Clear">✕</button>
+          </div>
+          <div class="token-input-row">
+            <div class="active-tokens" id="activeTokens"></div>
+          </div>
+          <div class="vocab-container">
+            <h4>Core vocabulary</h4>
+            <div class="vocab-pallet" id="vocabPallet"></div>
+          </div>
+          <button id="btnSendSigns" class="btn btn-primary btn-full" type="button">Run pipeline</button>
+        </div>
+        <div class="pipeline-inspector">
+          <h4>Inspector</h4>
+          <div class="inspector-steps">
+            <div class="inspector-step"><span class="step-label">1. Input</span><code id="inspectRaw">--</code></div>
+            <div class="inspector-step"><span class="step-label">2. Context</span><code id="inspectDisambiguated">--</code></div>
+            <div class="inspector-step"><span class="step-label">3. English</span><code id="inspectEnglish">--</code></div>
+            <div class="inspector-step"><span class="step-label">4. Speech</span><code id="inspectSpeech">--</code></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Ambiguity benchmark</h2>
+          <button id="btnRunBenchmark" class="btn btn-secondary btn-sm" type="button">Re-run</button>
+        </div>
+        <div class="benchmark-summary">
+          <div class="metric-box"><span class="metric-title">Context agent</span><span class="metric-number highlight" id="benchContextAcc">—</span></div>
+          <div class="metric-box"><span class="metric-title">No context</span><span class="metric-number" id="benchNoContextAcc">—</span></div>
+          <div class="metric-box"><span class="metric-title">Delta</span><span class="metric-number success" id="benchDelta">—</span></div>
+        </div>
+        <div class="benchmark-table-wrapper">
+          <table class="benchmark-table">
+            <thead>
+              <tr><th>#</th><th>Case</th><th>Raw</th><th>Resolved</th><th>Expected</th><th>Status</th></tr>
+            </thead>
+            <tbody id="benchmarkTableBody">
+              <tr><td colspan="6" style="text-align:center;padding:20px;">Open the lab to run cases.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
