@@ -83,7 +83,7 @@ Open your browser and navigate to: **`http://localhost:8000`**
 
 ## Dataset & Training Pipeline
 
-The system is configured for the **ASL Citizen** dataset (59 vocabulary classes: 39 Core + 20 Extension):
+The system is configured for the **[ASL Citizen](https://www.microsoft.com/en-us/research/project/asl-citizen/)** dataset by Microsoft Research (59 vocabulary classes: 39 Core + 20 Extension):
 
 ### 1. Extract Landmarks from Videos
 ```bash
@@ -196,5 +196,36 @@ Access the application at `http://localhost:8000`.
     ├── test_geometric.py      # Geometric and posture disambiguation tests
     ├── test_live_server.py    # Server endpoints and live integration tests
     ├── test_pipeline.py       # Integration tests & fault-tolerance tests
-    └── benchmark_latency.py   # Latency benchmark suite against SLA budgets
+```
+
+---
+
+## Dataset Attribution & Non-Commercial Notice
+
+> [!IMPORTANT]
+> **Personal & Non-Commercial Project Notice:**
+> This repository and application is an independent **personal project developed strictly for non-commercial, educational, and research purposes**. It is not intended for commercial use or deployment.
+
+### ASL Citizen Dataset Credit
+This project utilizes and builds upon the **[ASL Citizen](https://www.microsoft.com/en-us/research/project/asl-citizen/)** dataset developed by **Microsoft Research** and academic collaborators in partnership with Deaf community members. We gratefully acknowledge and credit the creators, researchers, and community signers whose contributions made this dataset possible.
+
+### Dataset Access & Contact
+- This repository **does not host, redistribute, or license** the original ASL Citizen dataset or raw video files.
+- If you wish to use, download, or access the ASL Citizen dataset for research or educational purposes, please visit the official [Microsoft Research ASL Citizen Project Page](https://www.microsoft.com/en-us/research/project/asl-citizen/) to review their data use agreement, submit an access request, or contact the authors directly.
+
+### Citation
+If you use the ASL Citizen dataset in your work, please cite their NeurIPS 2023 paper:
+
+**Text Citation:**
+> Aashaka Desai, Lauren Berger, Fyodor O. Minakov, Vanessa Milan, Chinmay Singh, Kriston L. Pumphrey, Richard Ladner, Hal Daumé III, Alex Xijie Lu, Naomi Caselli, and Danielle Bragg. *"ASL Citizen: A Community-Sourced Dataset for Advancing Isolated Sign Language Recognition."* In *Thirty-seventh Conference on Neural Information Processing Systems (NeurIPS 2023) Datasets and Benchmarks Track*, 2023.
+
+**BibTeX:**
+```bibtex
+@inproceedings{desai2023asl,
+  title={ASL Citizen: A Community-Sourced Dataset for Advancing Isolated Sign Language Recognition},
+  author={Desai, Aashaka and Berger, Lauren and Minakov, Fyodor O and Milan, Vanessa and Singh, Chinmay and Pumphrey, Kriston L and Ladner, Richard and Daum{\'e} III, Hal and Lu, Alex Xijie and Caselli, Naomi and Bragg, Danielle},
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+  year={2023},
+  url={https://openreview.net/forum?id=V2m925rV42}
+}
 ```
