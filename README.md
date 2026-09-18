@@ -50,7 +50,7 @@ Reported from the included benchmark suite (`tests/benchmark_latency.py`) — re
 
 | Stage | SLA budget | Observed |
 |---|---|---|
-| Vision → sign classification | < 300 ms | ~7.9 ms *(confirm: does this include MediaPipe frame extraction, or classifier forward pass only?)* |
+| Vision → sign classification | < 300 ms | ~7.9 ms  |
 | Full pipeline (vision → spoken output) | < 2000 ms | ~103 ms |
 
 ---
