@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SignVoice — Live ASL Interpreter</title>
-  <meta name="description" content="Real-time ASL to English interpreter with live gloss, translation, and speech.">
+  <meta name="description" content="SignVoice is a real-time ASL to English interpreter powered by a multi-agent AI pipeline with live gloss, translation, and speech synthesis.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -12,28 +12,206 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
-  <div class="app-shell">
+
+  <!-- LANDING PAGE -->
+  <div id="viewLanding" class="landing-shell">
+    <nav class="landing-nav">
+      <div class="landing-nav-brand">
+        <span class="brand-mark" aria-hidden="true">手</span>
+        <span class="landing-nav-name">SignVoice</span>
+      </div>
+      <div class="landing-nav-actions">
+        <button id="landingLoginBtn" class="btn btn-ghost" type="button">Log In</button>
+        <button id="landingSignupBtn" class="btn btn-primary" type="button">Get Started</button>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-badge">✦ Multi-Agent AI Pipeline</div>
+      <h1 class="hero-title">
+        Speak every sign<br>
+        <span class="hero-title-accent">in real time.</span>
+      </h1>
+      <p class="hero-sub">
+        SignVoice listens to American Sign Language through your webcam and translates it
+        into spoken English — instantly. Powered by six cooperating AI agents working
+        in concert: vision, recognition, context, language, speech, and memory.
+      </p>
+      <div class="hero-cta">
+        <button id="heroGetStartedBtn" class="btn btn-primary btn-lg" type="button">Get Started — it's free</button>
+        <button id="heroLearnBtn" class="btn btn-ghost btn-lg" type="button">Learn how it works ↓</button>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-glow-ring"></div>
+        <div class="hero-card-mock">
+          <div class="mock-topbar">
+            <span class="mock-dot" style="background:#e06b6b"></span>
+            <span class="mock-dot" style="background:#e0b04a"></span>
+            <span class="mock-dot" style="background:#7eb8a4"></span>
+            <span class="mock-label">Live Interpreter</span>
+          </div>
+          <div class="mock-video">
+            <span class="mock-hand">🤟</span>
+            <div class="mock-hud">
+              <div class="mock-hud-row"><span class="mock-hud-chip">Seeing: HELLO</span><span class="mock-hud-lock">Locked ✓</span></div>
+              <div class="mock-bars">
+                <div class="mock-bar-track"><div class="mock-bar-fill" style="width:88%"></div></div>
+                <div class="mock-bar-track"><div class="mock-bar-fill accent2" style="width:100%"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-subtitle">"Hello there, how can I help you?"</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <p class="section-eyebrow">How it works</p>
+      <h2 class="section-title">Six agents. One voice.</h2>
+      <p class="section-sub">Every sign you make is processed by a coordinated pipeline of specialized AI agents before becoming natural-sounding speech.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">👁️</div>
+          <h3>Vision Agent</h3>
+          <p>Tracks your hands in real time using MediaPipe, extracting 63 precise landmark coordinates per frame.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖐️</div>
+          <h3>Sign Recognition</h3>
+          <p>A trained BiGRU model (or geometric fallback) maps landmark sequences to ASL glosses with confidence scoring.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>Context Agent</h3>
+          <p>Resolves pronoun ambiguity, homonyms, and role-based signing using conversation history and grammar rules.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>Language Agent</h3>
+          <p>Translates ASL glosses to fluent English via Groq/Gemini LLMs, with graceful local fallback.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔊</div>
+          <h3>Speech Agent</h3>
+          <p>Synthesizes natural-sounding audio from translations using server TTS or the browser's Speech API.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗂️</div>
+          <h3>Memory Agent</h3>
+          <p>Keeps a rolling conversation transcript so context carries across multiple signing turns.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-bar">
+      <div class="trust-stat">
+        <span class="trust-number">16</span>
+        <span class="trust-label">Ambiguity benchmark cases</span>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-stat">
+        <span class="trust-number">&lt;300ms</span>
+        <span class="trust-label">Typical pipeline latency</span>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-stat">
+        <span class="trust-number">6</span>
+        <span class="trust-label">Cooperating AI agents</span>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-stat">
+        <span class="trust-number">Real-time</span>
+        <span class="trust-label">WebSocket streaming</span>
+      </div>
+    </section>
+
+    <section class="landing-cta-section">
+      <h2 class="section-title">Ready to start signing?</h2>
+      <p class="section-sub">Create a free account and start translating ASL in seconds.</p>
+      <button id="ctaSignupBtn" class="btn btn-primary btn-lg" type="button">Create Free Account</button>
+    </section>
+
+    <footer class="landing-footer">
+      <div class="landing-footer-brand">
+        <span class="brand-mark small" aria-hidden="true">手</span>
+        <span>SignVoice</span>
+      </div>
+      <p>An open-source, multi-agent ASL interpretation system built with FastAPI and MediaPipe.</p>
+    </footer>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div id="authModal" class="modal-overlay" style="display:none;" aria-modal="true" role="dialog">
+    <div class="modal-card">
+      <button class="modal-close" id="modalCloseBtn" aria-label="Close">&times;</button>
+      <div id="formLogin" class="auth-form">
+        <div class="auth-logo"><span class="brand-mark" aria-hidden="true">手</span></div>
+        <h2 class="auth-title">Welcome back</h2>
+        <p class="auth-sub">Sign in to your SignVoice account.</p>
+        <div id="loginError" class="auth-error" style="display:none;"></div>
+        <div class="field-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="field-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button id="btnLogin" class="btn btn-primary btn-full" type="button">Log In</button>
+        <p class="auth-switch">Don't have an account? <button class="link-btn" id="switchToSignup" type="button">Sign up</button></p>
+        <div class="admin-hint"><span>Admin: <code>admin@signvoice.app</code></span></div>
+      </div>
+
+      <div id="formSignup" class="auth-form" style="display:none;">
+        <div class="auth-logo"><span class="brand-mark" aria-hidden="true">手</span></div>
+        <h2 class="auth-title">Create account</h2>
+        <p class="auth-sub">Join SignVoice — it's completely free.</p>
+        <div id="signupError" class="auth-error" style="display:none;"></div>
+        <div class="field-group">
+          <label for="signupName">Name</label>
+          <input id="signupName" type="text" placeholder="Your name" autocomplete="name">
+        </div>
+        <div class="field-group">
+          <label for="signupEmail">Email</label>
+          <input id="signupEmail" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="field-group">
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" type="password" placeholder="Choose a password" autocomplete="new-password">
+        </div>
+        <button id="btnSignup" class="btn btn-primary btn-full" type="button">Create Account</button>
+        <p class="auth-switch">Already have an account? <button class="link-btn" id="switchToLogin" type="button">Log in</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP SHELL -->
+  <div class="app-shell" id="appShell" style="display:none;">
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">手</span>
         <div>
           <h1>SignVoice</h1>
-          <p>Live ASL → English interpreter</p>
+          <p>Live ASL to English interpreter</p>
         </div>
       </div>
-
       <nav class="nav-tabs" role="tablist">
         <button id="tabBtnDashboard" class="nav-tab active" type="button">Live Interpreter</button>
-        <button id="tabBtnTesting" class="nav-tab" type="button">Testing Lab</button>
+        <button id="tabBtnTesting" class="nav-tab nav-tab-admin" type="button" style="display:none;">Testing Lab</button>
       </nav>
-
       <div class="topbar-meta">
         <span class="pill" id="backendPill">Recognizer: …</span>
         <div class="connection-status" id="wsStatus">
           <span class="status-dot"></span>
           <span class="status-label">Connecting…</span>
         </div>
+        <div class="user-badge" id="userBadge">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <span class="user-name" id="userNameDisplay"></span>
+          <span class="user-role-chip" id="userRoleChip"></span>
+        </div>
         <button id="btnResetSession" class="btn btn-ghost" type="button">Reset</button>
+        <button id="btnLogout" class="btn btn-ghost btn-logout" type="button">Log out</button>
       </div>
     </header>
 
@@ -57,7 +235,6 @@
             <span class="toggle-label" id="camSwitchLabel">Camera on</span>
           </div>
         </div>
-
         <div class="video-container" id="videoContainer">
           <video id="webcamVideo" autoplay playsinline muted></video>
           <canvas id="landmarkCanvas"></canvas>
@@ -88,7 +265,6 @@
             </div>
           </div>
         </div>
-
         <p class="hint">Hold a sign still until it locks into the phrase. Drop your hands (or tap Translate) to speak the sentence.</p>
       </section>
 
@@ -102,7 +278,6 @@
             <span class="muted">Signs you hold will appear here</span>
           </div>
         </section>
-
         <section class="panel speech-panel">
           <div class="panel-header">
             <h2>English</h2>
@@ -118,11 +293,8 @@
             <span id="totalLatencyBadge">Pipeline 0 ms</span>
           </div>
         </section>
-
         <section class="panel pipeline-panel">
-          <div class="panel-header">
-            <h2>Agents</h2>
-          </div>
+          <div class="panel-header"><h2>Agents</h2></div>
           <ol class="pipe">
             <li id="cardVision"><span class="agent-dot" id="dotVision"></span><b>Vision</b><em id="latVision">—</em><span id="valVision">Ready</span></li>
             <li id="cardSign"><span class="agent-dot" id="dotSign"></span><b>Sign</b><em id="latSign">—</em><span id="valSign">Waiting</span></li>
@@ -132,7 +304,6 @@
             <li id="cardMemory"><span class="agent-dot" id="dotMemory"></span><b>Memory</b><em id="latMemory">—</em><span id="valMemory">0 turns</span></li>
           </ol>
         </section>
-
         <section class="panel guide-panel">
           <h2>Signs that work well</h2>
           <ul class="guide">
@@ -181,7 +352,7 @@
         <div class="custom-builder">
           <div class="builder-header">
             <h4>Active sequence</h4>
-            <button id="btnClearTokens" class="btn-icon" type="button" title="Clear">✕</button>
+            <button id="btnClearTokens" class="btn-icon" type="button" title="Clear">X</button>
           </div>
           <div class="token-input-row">
             <div class="active-tokens" id="activeTokens"></div>
@@ -225,6 +396,7 @@
       </section>
     </main>
   </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

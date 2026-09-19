@@ -9,17 +9,29 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
 
 from src.models.schema import ConversationState, AgentState, AgentStatus, ConversationTurn
 from src.orchestration.coordinator import Orchestrator
 from src.config import BASE_DIR, HOST, PORT, MODELS_DIR
 
 logger = logging.getLogger(__name__)
+
+# Auth config
+ADMIN_EMAIL = "admin@signvoice.app"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "signvoice-admin-2024")
+JWT_SECRET = os.environ.get("JWT_SECRET", "signvoice-secret")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = 72
+
+security = HTTPBearer(auto_error=False)
 
 app = FastAPI(
     title="Agentic ASL Conversation Assistant API",
@@ -49,6 +61,80 @@ class PredictRequest(BaseModel):
 class TranslateRequest(BaseModel):
     session_id: str = "default_session"
     signs: List[str]
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None  # used for signup
+
+
+class TokenResponse(BaseModel):
+    token: str
+    role: str
+    name: str
+    email: str
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+def create_token(email: str, name: str, role: str) -> str:
+    """Create a signed JWT with role claim."""
+    payload = {
+        "sub": email,
+        "name": name,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    """Decode and verify a JWT. Raises HTTPException on failure."""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+
+
+# ── Auth endpoints ────────────────────────────────────────────────────────────
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login(req: LoginRequest):
+    """
+    Login endpoint.
+    - Admin: email must match ADMIN_EMAIL and password must match ADMIN_PASSWORD env var.
+    - Regular user: any email/password accepted (accounts are client-side only);
+      the server issues a 'user' role token so it's properly signed.
+    """
+    is_admin = (
+        req.email.strip().lower() == ADMIN_EMAIL.lower()
+        and req.password == ADMIN_PASSWORD
+    )
+    role = "admin" if is_admin else "user"
+    # For admin, reject wrong password explicitly
+    if req.email.strip().lower() == ADMIN_EMAIL.lower() and not is_admin:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    
+    display_name = req.name or req.email.split("@")[0].capitalize()
+    token = create_token(req.email.strip().lower(), display_name, role)
+    return TokenResponse(token=token, role=role, name=display_name, email=req.email.strip().lower())
+
+
+@app.get("/api/auth/verify")
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify a Bearer token and return the decoded payload."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    payload = decode_token(credentials.credentials)
+    return {
+        "valid": True,
+        "email": payload.get("sub"),
+        "name": payload.get("name"),
+        "role": payload.get("role"),
+    }
+
 
 
 class AmbiguityBenchmarkCase(BaseModel):
