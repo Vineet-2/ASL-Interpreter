@@ -1,14 +1,16 @@
-# SignVoice — Live ASL Interpreter
+# SignVoice — ASL Sign Recognition & Speech Assistant
 
-An end-to-end, multi-agent American Sign Language (ASL) conversation system that translates continuous sign language captured via webcam into fluent spoken English in real time.
+A webcam-based system that recognizes a **fixed vocabulary of American Sign Language (ASL) signs** in real time and converts recognized sign sequences into spoken English.
 
-Built with a **6-Agent Blackboard Architecture**, **BiGRU + Attention** sequence classifier, **Context Disambiguation Engine**, **Multi-Tier LLM Translation (Groq $\rightarrow$ Gemini $\rightarrow$ Local Rules)**, **Offline TTS**, **FastAPI WebSocket Streaming Backend**, and a **Modern Web UI Dashboard & Testing Lab**.
+**Scope, stated plainly:** this recognizes 59 signs (39 core + 20 extension classes, from the ASL Citizen dataset) — it is not an open-vocabulary or fully continuous ASL translator, and it does not model ASL grammar beyond the specific homonym-disambiguation rules listed below. Within that vocabulary, it continuously segments a live video stream into individual signs and uses an LLM to phrase the recognized sequence as a natural English sentence.
+
+Built as six cooperating agents sharing a common "blackboard" state, each owning one stage of the pipeline: vision, sign recognition, context disambiguation, language generation, speech synthesis, and conversation memory. The multi-agent split exists so each stage can be swapped, benchmarked, or degraded independently — e.g. losing the LLM API doesn't take down sign recognition.
 
 ---
 
 ## System Architecture
 
-```mermaid
+```
 graph TD
     subgraph Sensation & Recognition
         Webcam([Signer / Camera]) -->|Raw Video Frames| VisionAgent[1. Vision Agent: MediaPipe Hands / Holistic]
@@ -31,72 +33,85 @@ graph TD
 
 ---
 
-## Key Features
+## Components
 
-- **6 Specialized Blackboard Agents**:
-  1. **Vision Agent**: Extracts 144-dimensional feature vectors (126 hand landmarks + 18 body-relative anchor features) using MediaPipe with wrist-centric normalization and posture analysis.
-  2. **Sign Recognition Agent**: 2-layer BiGRU with temporal self-attention pooling, continuous sliding-window segmentation, and geometric posture disambiguation. Supports PyTorch (`.pth`) and ONNX runtimes.
-  3. **Context Agent**: Resolves homonyms and polysemous signs (e.g., `EAT` vs `FOOD`, `SHOP` vs `STORE`, `ME` $\rightarrow$ `I`/`MY`) using multi-turn conversational context and grammatical rules.
-  4. **Language Agent**: Translates ASL gloss grammar to natural, fluent English using a resilient multi-tier fallback hierarchy: **Groq (`llama-3.3-70b-versatile`) $\rightarrow$ Google Gemini $\rightarrow$ Local Offline Rule Synthesizer**.
-  5. **Speech Agent**: Offline text-to-speech engine powered by `pyttsx3` with base64 audio stream packaging and browser Web Speech API fallback.
-  6. **Conversation Memory Agent**: Manages multi-turn session persistence, sliding context windows, and JSON transcript export.
-- **Ultra-Low Latency Streaming**: Sub-300ms vision-to-sign latency and sub-second end-to-end translation pipeline over bi-directional WebSockets.
-- **SignVoice Modern Interface**:
-  - **Live Interpreter**: Webcam overlay with real-time hand landmark tracking, hold-to-commit sensitivity tuning (`steady`, `balanced`, `fast`), confidence/hold meters, phrase builder chips, live subtitles, audio playback toggle, and per-agent latency telemetry.
-  - **Testing Lab**: Interactive sign sequence sandbox with quick presets, active token sequencing palette, 4-step pipeline inspector, and automated Ambiguity Resolution benchmark suite.
-- **Fault-Tolerant & Containerized**: Graceful degradation on API outages or missing hardware, with single-command Docker deployment.
+1. **Vision Agent** — extracts a 144-dimensional feature vector per frame (126 hand landmarks + 18 body-relative anchor features) using MediaPipe, with wrist-centric normalization and basic posture features.
+2. **Sign Recognition Agent** — a 2-layer BiGRU with temporal self-attention pooling over a sliding window, classifying among the 59-sign vocabulary. Runs in PyTorch (`.pth`) or exported ONNX.
+3. **Context Agent** — a rule-table disambiguator that uses recent conversation history to resolve a specific, known set of homonyms/polysemous signs (e.g. `EAT` vs `FOOD`, `SHOP` vs `STORE`, `ME` → `I`/`MY`). It only resolves cases it has an explicit rule for.
+4. **Language Agent** — turns a disambiguated sign sequence into a fluent English sentence via a fallback chain: Groq (`llama-3.3-70b-versatile`) → Google Gemini → a local rule-based synthesizer if neither API key is configured or reachable.
+5. **Speech Agent** — offline text-to-speech via `pyttsx3`, packaged as base64 audio for the browser, with a Web Speech API fallback.
+6. **Memory Agent** — per-session conversation state and JSON transcript export.
 
 ---
 
-## Quickstart Guide
+## Measured Latency
+
+Reported from the included benchmark suite (`tests/benchmark_latency.py`) — re-run and update these numbers for your own hardware before quoting them anywhere:
+
+| Stage | SLA budget | Observed |
+|---|---|---|
+| Vision → sign classification | < 300 ms | ~7.9 ms  |
+| Full pipeline (vision → spoken output) | < 2000 ms | ~103 ms |
+
+---
+
+## Known Limitations
+
+- **Closed vocabulary.** Only the 59 signs in the ASL Citizen subset used for training are recognized — anything else is misclassified or ignored, not gracefully handled.
+- **Rule-based disambiguation only.** The context agent resolves the homonym pairs explicitly coded into it; it does not generalize to new ambiguous signs.
+- **LLM-dependent fluency.** Sentence quality is noticeably lower on the local rule-based fallback than when Groq/Gemini are reachable.
+- **Untested generalization.** Not evaluated on signers, lighting, or camera setups outside the training/testing data.
+
+---
+
+## Quickstart
 
 ### 1. Clone & Install Dependencies
-```bash
-git clone https://github.com/your-username/asl-conversation-assistant.git
-cd asl-conversation-assistant
 
-# Create and activate virtual environment (optional but recommended)
+```
+git clone <your-repo-url>
+cd signvoice
+
 python -m venv venv
 venv\Scripts\activate  # Windows (or: source venv/bin/activate on Linux/macOS)
 
-# Install Python requirements
 python -m pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables (Optional)
+### 2. Configure Environment Variables (optional)
+
 Create a `.env` file in the root directory:
-```env
+
+```
 GROQ_API_KEY=your_groq_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
-ASL_CITIZEN_VIDEOS=E:\ASL_Citizen\ASL_Citizen\videos
+ASL_CITIZEN_VIDEOS=path/to/ASL_Citizen/videos
 ```
-> [!NOTE]
-> If no external API keys are provided, SignVoice automatically falls back to the built-in local offline grammar synthesizer without interruption.
+
+> If no external API keys are provided, SignVoice falls back to the local rule-based synthesizer.
 
 ### 3. Launch the Application
-```bash
+
+```
 python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
-Open your browser and navigate to: **`http://localhost:8000`**
+
+Open `http://localhost:8000`.
 
 ---
 
 ## Dataset & Training Pipeline
 
-The system is configured for the **[ASL Citizen](https://www.microsoft.com/en-us/research/project/asl-citizen/)** dataset by Microsoft Research (59 vocabulary classes: 39 Core + 20 Extension):
+Trained on the **ASL Citizen** dataset (59 vocabulary classes: 39 core + 20 extension).
 
-### 1. Extract Landmarks from Videos
-```bash
-python -m src.training.extract_landmarks --video-dir "E:\ASL_Citizen\ASL_Citizen\videos"
 ```
+# 1. Extract landmarks from videos
+python -m src.training.extract_landmarks --video-dir "path/to/ASL_Citizen/videos"
 
-### 2. Train the BiGRU + Attention Classifier
-```bash
+# 2. Train the BiGRU + Attention classifier
 python -m src.training.train_bigru --epochs 30 --batch-size 32 --lr 0.001
-```
 
-### 3. Export to ONNX
-```bash
+# 3. Export to ONNX
 python -m src.training.export_onnx
 ```
 
@@ -104,22 +119,13 @@ python -m src.training.export_onnx
 
 ## Running Tests & Benchmarks
 
-### Run Unit & Integration Tests
-```bash
-python -m pytest tests/ -v -o asyncio_mode=auto
 ```
-
-### Run Latency Benchmark
-```bash
+python -m pytest tests/ -v -o asyncio_mode=auto
 python tests/benchmark_latency.py
 ```
-*SLA Budgets & Performance:*
-- Vision $\rightarrow$ Sign Path: `< 300 ms` (Observed: `~7.9 ms`)
-- Full End-to-End Pipeline: `< 2000 ms` (Observed: `~103 ms`)
 
-### Run Ambiguity Resolution Benchmark
-```bash
-# Query the live ambiguity benchmark endpoint
+Ambiguity-resolution benchmark (query the live endpoint):
+```
 python -c "import urllib.request, json; print(json.dumps(json.loads(urllib.request.urlopen('http://localhost:8000/api/benchmark/ambiguity').read()), indent=2))"
 ```
 
@@ -129,73 +135,71 @@ python -c "import urllib.request, json; print(json.dumps(json.loads(urllib.reque
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/` | `GET` | Serves the SignVoice web interface (Dashboard & Testing Lab) |
-| `/api/agents/status` | `GET` | Real-time health, state, and latency metrics for all 6 agents |
-| `/api/translate` | `POST` | Translates a raw sign gloss sequence into English text and speech audio |
-| `/api/pipeline/run` | `POST` | Executes full pipeline on batch landmarks or sign tokens |
-| `/api/transcript/{session_id}` | `GET` | Retrieves full JSON conversation history for a session |
-| `/api/session/reset` | `POST` | Clears conversation state and memory for a session |
-| `/api/benchmark/ambiguity` | `GET` | Evaluates accuracy against homonym and ambiguity test cases |
-| `/ws/stream` | `WebSocket` | Bi-directional streaming for video landmarks, subtitles, and telemetry |
+| `/` | `GET` | Serves the web dashboard and testing lab |
+| `/api/agents/status` | `GET` | Health, state, and latency metrics for all 6 agents |
+| `/api/translate` | `POST` | Translates a raw sign gloss sequence into English text + speech audio |
+| `/api/pipeline/run` | `POST` | Runs the full pipeline on batch landmarks or sign tokens |
+| `/api/transcript/{session_id}` | `GET` | Retrieves JSON conversation history for a session |
+| `/api/session/reset` | `POST` | Clears conversation state/memory for a session |
+| `/api/benchmark/ambiguity` | `GET` | Evaluates accuracy against the coded homonym/ambiguity test cases |
+| `/ws/stream` | `WebSocket` | Bi-directional streaming of video landmarks, subtitles, telemetry |
 
 ---
 
 ## Docker Deployment
 
-Deploy the entire assistant in a single command:
-```bash
+```
 docker-compose up --build
 ```
-Access the application at `http://localhost:8000`.
+
+Access at `http://localhost:8000`.
 
 ---
 
 ## Project Structure
 
 ```
-├── AGENTS.md                  # Comprehensive agent contracts and specifications
-├── README.md                  # System overview and quickstart documentation
-├── Dockerfile                 # Single container multi-stage build
-├── docker-compose.yml         # Container configuration
-├── requirements.txt           # Python dependencies
-├── project.md                 # Project sprint specification and architecture
-├── .gitignore                 # Excludes .csv datasets, model weights, cache & logs
+├── README.md
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
 ├── saved_models/              # Trained PyTorch (.pth) and ONNX models (git ignored)
 ├── src/
-│   ├── config.py              # Configuration and environment variables
+│   ├── config.py
 │   ├── agents/
-│   │   ├── base_agent.py      # Abstract agent class with timing & fallback
-│   │   ├── vision_agent.py    # MediaPipe feature extraction & normalization
-│   │   ├── sign_agent.py      # BiGRU inference & continuous sliding-window segmentation
-│   │   ├── context_agent.py   # Rule-table disambiguator & history resolver
-│   │   ├── language_agent.py  # Multi-tier LLM grammar engine (Groq/Gemini/Local)
-│   │   ├── speech_agent.py    # pyttsx3 offline TTS synthesis & base64 packaging
-│   │   └── memory_agent.py    # Conversation state persistence & JSON export
+│   │   ├── base_agent.py
+│   │   ├── vision_agent.py
+│   │   ├── sign_agent.py
+│   │   ├── context_agent.py
+│   │   ├── language_agent.py
+│   │   ├── speech_agent.py
+│   │   └── memory_agent.py
 │   ├── models/
-│   │   ├── schema.py          # Frozen ConversationState blackboard schema
-│   │   └── bigru_model.py     # PyTorch BiGRU with Attention Pooling model
+│   │   ├── schema.py
+│   │   └── bigru_model.py
 │   ├── orchestration/
-│   │   └── coordinator.py     # Async blackboard coordinator & failure containment
+│   │   └── coordinator.py
 │   ├── training/
-│   │   ├── dataset.py         # LandmarkSequenceDataset with data augmentations
-│   │   ├── extract_landmarks.py# Fast landmark extractor from dataset videos
-│   │   ├── train_bigru.py     # PyTorch training pipeline with checkpointing
-│   │   └── export_onnx.py     # ONNX exporter & verification helper
+│   │   ├── dataset.py
+│   │   ├── extract_landmarks.py
+│   │   ├── train_bigru.py
+│   │   └── export_onnx.py
 │   ├── data/
-│   │   └── vocabulary.py      # Core 40 & Extension 20 sign vocabulary definitions
+│   │   └── vocabulary.py
 │   └── api/
-│       └── server.py          # FastAPI application, WebSocket streamer & endpoints
+│       └── server.py
 ├── static/
-│   ├── index.html             # SignVoice dashboard and testing lab UI
-│   ├── style.css              # Custom styling, design system, and typography
-│   └── app.js                 # WebSocket client, MediaPipe tracking, telemetry UI
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
 └── tests/
-    ├── test_schema.py         # Unit tests for ConversationState
-    ├── test_agents.py         # Unit tests for 6 specialized agents
-    ├── test_ambiguity.py      # Ambiguity benchmark evaluation test
-    ├── test_geometric.py      # Geometric and posture disambiguation tests
-    ├── test_live_server.py    # Server endpoints and live integration tests
-    ├── test_pipeline.py       # Integration tests & fault-tolerance tests
+    ├── test_schema.py
+    ├── test_agents.py
+    ├── test_ambiguity.py
+    ├── test_geometric.py
+    ├── test_live_server.py
+    ├── test_pipeline.py
+    └── benchmark_latency.py
 ```
 
 ---
